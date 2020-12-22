@@ -6,7 +6,7 @@ import { getUseDcoFlag,getCustomPrSignComment } from '../shared/getInputs'
 import * as core from '@actions/core'
 
 export default async function signatureWithPRComment(committerMap: CommitterMap, committers) {
-
+    core.error(`ERROR: This function signatureWithPRComment() should not be called in MLCommons bot.`)
     core.warning(`signatureWithPRComment ----> ${getUseDcoFlag()}`)
     let repoId = context.payload.repository!.id
     let commentedCommitterMap = {} as CommentedCommitterMap
@@ -29,16 +29,20 @@ export default async function signatureWithPRComment(committerMap: CommitterMap,
             pullRequestNo: context.issue.number
         })
     })
-    listOfPRComments.map(comment => {
-        if (isCommentSignedByUser(comment.body || "", comment.name)) {
-            filteredListOfPRComments.push(comment)
-        }
-    })
-    for (var i = 0; i < filteredListOfPRComments.length; i++) {
-        delete filteredListOfPRComments[i].body
-    }
+    //subin commented below lines
+    // listOfPRComments.map(comment => {
+    //     if (isCommentSignedByUser(comment.body || "", comment.name)) {
+    //         filteredListOfPRComments.push(comment)
+    //     }
+    // })
+
+    // for (var i = 0; i < filteredListOfPRComments.length; i++) {
+    //     delete filteredListOfPRComments[i].body
+    // }
     //checking if the reacted committers are not the signed committers(not in the storage file) and filtering only the unsigned committers
-    commentedCommitterMap.newSigned = filteredListOfPRComments.filter(commentedCommitter => committerMap.notSigned!.some(notSignedCommitter => commentedCommitter.id === notSignedCommitter.id))
+    //subin commented below lines
+    // commentedCommitterMap.newSigned = filteredListOfPRComments.filter(commentedCommitter => committerMap.notSigned!.some(notSignedCommitter => commentedCommitter.id === notSignedCommitter.id))
+    // subin changes end
     // if (context.eventName === 'issue_comment') {
     //     //Do empty commit only when the contributor signs the CLA with the PR comment and then check if the comment is from the newsigned contributor
     //     if (input.getEmptyCommitFlag() == 'true') {
@@ -63,16 +67,18 @@ function isCommentSignedByUser(comment:string, commentAuthor: string):boolean{
     if (commentAuthor === 'github-actions[bot]') {
         return false
     }
-    if(getCustomPrSignComment() !== ""){
-        return getCustomPrSignComment().toLowerCase() === comment
-    }
-    // using a `string` true or false purposely as github action input cannot have a boolean value
-    switch (getUseDcoFlag()) {
-        case 'true':
-            return comment.match(/^.*i \s*have \s*read \s*the \s*dco \s*document \s*and \s*i \s*hereby \s*sign \s*the \s*dco.*$/) !== null
-        case 'false':
-            return comment.match(/^.*i \s*have \s*read \s*the \s*cla \s*document \s*and \s*i \s*hereby \s*sign \s*the \s*cla.*$/) !== null
-        default:
-            return false
-        }
+    return true
+    //subin commented below lines
+    // if(getCustomPrSignComment() !== ""){
+    //     return getCustomPrSignComment().toLowerCase() === comment
+    // }
+    // // using a `string` true or false purposely as github action input cannot have a boolean value
+    // switch (getUseDcoFlag()) {
+    //     case 'true':
+    //         return comment.match(/^.*i \s*have \s*read \s*the \s*dco \s*document \s*and \s*i \s*hereby \s*sign \s*the \s*dco.*$/) !== null
+    //     case 'false':
+    //         return comment.match(/^.*i \s*have \s*read \s*the \s*cla \s*document \s*and \s*i \s*hereby \s*sign \s*the \s*cla.*$/) !== null
+    //     default:
+    //         return false
+    //     }
 }

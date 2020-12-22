@@ -1,6 +1,7 @@
 import { checkAllowList } from './checkAllowList'
 import getCommitters from './graphql'
 import prCommentSetup from './pullrequest/pullRequestComment'
+import { printCommitterMap, printCommittersDetails } from './pullrequest/pullRequestComment'
 import { CommitterMap, CommittersDetails, ReactedCommitterMap, ClafileContentAndSha } from './interfaces'
 import { context } from '@actions/github'
 import { createFile, getFileContent, updateFile } from './persistence/persistence'
@@ -19,7 +20,9 @@ export async function setupClaCheck() {
   }
   let signed: boolean = false, response
   let committers = await getCommitters() as CommittersDetails[]
+  core.info(`Found following users in PR: ${printCommittersDetails(committers)}`)
   committers = checkAllowList(committers) as CommittersDetails[]
+  core.info(`Found following users(-allowlist) in PR: ${printCommittersDetails(committers)}`)
 
   try {
     response = await getCLAFileContentandSHA(committers, committerMap) as ClafileContentAndSha
@@ -31,31 +34,39 @@ export async function setupClaCheck() {
   const sha: string = response?.sha
 
   committerMap = prepareCommiterMap(committers, claFileContent) as CommitterMap
+  core.info(`Created a committerMap for users in PR: ${printCommitterMap(committerMap)}`)
 
   if (committerMap?.notSigned && committerMap?.notSigned.length === 0) {
     signed = true
+    core.info(`Found all users to have signed CLA`)
   }
   try {
-    const reactedCommitters: any = (await prCommentSetup(signed, committerMap, committers)) as ReactedCommitterMap
+    // BROKEN !!!!!!!!!!
+    // moving to after signed check
+    ///const reactedCommitters: any = (await prCommentSetup(signed, committerMap, committers)) as ReactedCommitterMap
+    await prCommentSetup(signed, committerMap, committers)
 
     if (signed) {
       core.info(`All committers have signed the CLA`)
       return reRunLastWorkFlowIfRequired()
     }
-    if (reactedCommitters?.newSigned.length) {
-      /* pushing the recently signed  contributors to the CLA Json File */
-      await updateFile(sha, claFileContent, reactedCommitters)
-    }
-    if (reactedCommitters?.allSignedFlag) {
-      core.info(`All contributors have signed the CLA`)
-      return reRunLastWorkFlowIfRequired()
-    }
+    
+    // subin commented below line for mlcommons-bot since we don't update json file from bot
+    // if (reactedCommitters?.newSigned.length) {
+    //   /* pushing the recently signed  contributors to the CLA Json File */
+    //   await updateFile(sha, claFileContent, reactedCommitters)
+    // }
+    // if (reactedCommitters?.allSignedFlag) {
+    //   core.info(`All contributors have signed the CLA`)
+    //   return reRunLastWorkFlowIfRequired()
+    // }
 
     if (committerMap?.notSigned === undefined || committerMap.notSigned.length === 0) {
       core.info(`All contributors have signed the CLA`)
       return reRunLastWorkFlowIfRequired()
     } else {
       core.setFailed(`committers of Pull Request number ${context.issue.number} have to sign the CLA`)
+      core.info(`Found following users in PR who have not signed CLA: ${printUnsignedCommitter(committerMap.notSigned)}`)
     }
   } catch (err) {
     core.setFailed(`Could not update the JSON file: ${err.message}`)
@@ -125,3 +136,13 @@ const getInitialCommittersMap = (): CommitterMap => ({
   notSigned: [],
   unknown: []
 })
+
+export function printUnsignedCommitter(committers: CommittersDetails[]): string {
+  let text = '('
+  for (const i of committers) {
+    text += i.name
+    text += ', '
+  }
+  text += ')'
+  return text
+}

@@ -8,11 +8,12 @@ import * as core from '@actions/core'
 export async function reRunLastWorkFlowIfRequired() {
 
     if (context.eventName === "pull_request") {
-        core.debug(`rerun not required for event - pull_request`)
+        core.info(`rerun not required for event - pull_request`)
         return
     }
 
     const branch = await getBranchOfPullRequest()
+    core.info(` branch - ${branch}`)
     const workflowId = await getSelfWorkflowId()
     const runs = await listWorkflowRunsInBranch(branch, workflowId)
 
@@ -21,7 +22,7 @@ export async function reRunLastWorkFlowIfRequired() {
 
         const isLastWorkFlowFailed: boolean = await checkIfLastWorkFlowFailed(run)
         if (isLastWorkFlowFailed) {
-            core.debug(`Rerunning build run ${run}`)
+            core.info(`Rerunning build run ${run}`)
             await reRunWorkflow(run).catch(error => core.error(`Error occurred when re-running the workflow: ${error}`))
         }
     }
@@ -42,7 +43,8 @@ async function getSelfWorkflowId(): Promise<number> {
         owner: context.repo.owner,
         repo: context.repo.repo,
     });
-
+    core.info(` workflowList - ${workflowList.data.workflows}`)
+    core.info(` context.workflow - ${context.workflow}`)
     const workflow = workflowList.data.workflows
         .find(w => w.name == context.workflow)
 
@@ -84,3 +86,14 @@ async function checkIfLastWorkFlowFailed(run: number): Promise<boolean> {
 
 
 }
+
+// export function printWorkflows(workflows: ActionsListRepoWorkflowsResponseData.workflows[]): string {
+//     let text = '('
+//     for (const i of workflows) {
+//       text += i.name
+//       text += '-'
+//       text += i.id
+//       text += ', '
+//     }
+//     return text
+// }

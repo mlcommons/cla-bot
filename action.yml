@@ -35,6 +35,9 @@ inputs:
   use-dco-flag:
     description: "Set this to true if you want to use a dco instead of a cla"
     default: false
+  use-mlcommons-flag:
+    description: "Set this to true if you want to use a mlcommons cla bot"
+    default: true
 runs:
   using: "node12"
   main: "lib/main.js"
