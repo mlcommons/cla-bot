@@ -34,7 +34,7 @@ function mlcommons(signed: boolean, committerMap: CommitterMap): string {
     }
 
     let you = committersCount > 1 ? `you all` : `you`
-    let lineOne = (input.getCustomNotSignedPrComment() || `<br/>Thank you for your submission, we really appreciate it. We ask that $you sign our [MLCommons CLA](${input.getPathToDocument()}) and be a member before we can accept your contribution. If you are interested in membership, please contact membership@mlcommons.org .<br/>`).replace('$you', you)
+    let lineOne = (input.getCustomNotSignedPrComment() || "[LINK_TO_DOC]").replace("[LINK_TO_DOC]", input.getPathToDocument()).replace('$you', you)
     let text = `**MLCommons CLA bot:** ${lineOne}`
 
     if (committersCount >= 1 && committerMap && committerMap.signed && committerMap.notSigned) {
