@@ -20,3 +20,12 @@ git commit -m "Informative commit message"  # Commit. This will run Husky
 
 During the commit step, Husky will take care of formatting all files with [Prettier](https://github.com/prettier/prettier) as well as pruning out devDependencies using `npm prune --production`.
 It will also make sure these changes are appropriately included in your commit (no further work is needed)
+
+
+### local build
+
+```
+npm install
+npm ci
+npm run build --if-present
+```
