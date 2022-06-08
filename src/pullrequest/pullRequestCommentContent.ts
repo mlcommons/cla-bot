@@ -34,7 +34,13 @@ function mlcommons(signed: boolean, committerMap: CommitterMap): string {
     }
 
     let you = committersCount > 1 ? `you all` : `you`
-    let lineOne = (input.getCustomNotSignedPrComment() || "[LINK_TO_DOC]").replace("[LINK_TO_DOC]", input.getPathToDocument()).replace('$you', you)
+    let message = `<br/>Thank you very much for your submission, we really appreciate it. Before we can accept your contribution, 
+    we ask that you sign the MLCommons CLA (Apache 2). Please use this [Google form] ([LINK_TO_DOC]) to initiate 
+    authorization. If you are from an MLCommons member organization, we will request that you be added to the CLA. 
+    If you are not from a member organization, we will email you a CLA to sign. For any questions, please contact 
+    support@mlcommons.org.<br/>`
+    let path_to_document = "https://forms.gle/Ew1KkBVpyeJDuRw67"
+    let lineOne = message.replace("[LINK_TO_DOC]", path_to_document).replace('$you', you)
     let text = `**MLCommons CLA bot:** ${lineOne}`
 
     if (committersCount >= 1 && committerMap && committerMap.signed && committerMap.notSigned) {
