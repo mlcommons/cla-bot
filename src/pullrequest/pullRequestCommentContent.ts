@@ -35,7 +35,7 @@ function mlcommons(signed: boolean, committerMap: CommitterMap): string {
 
     let you = committersCount > 1 ? `you all` : `you`
     let message = `<br/>Thank you very much for your submission, we really appreciate it. Before we can accept your contribution, 
-    we ask that you sign the MLCommons CLA (Apache 2). Please use this [Google form] ([LINK_TO_DOC]) to initiate 
+    we ask that you sign the MLCommons CLA (Apache 2). Please use this [Google form]([LINK_TO_DOC]) to initiate 
     authorization. If you are from an MLCommons member organization, we will request that you be added to the CLA. 
     If you are not from a member organization, we will email you a CLA to sign. For any questions, please contact 
     support@mlcommons.org.<br/>`
