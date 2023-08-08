@@ -1,6 +1,6 @@
 # Change Log
 
-## v3.1 (2023-08-08)
+## [v3.1](https://github.com/mlcommons/cla-bot/tree/v3.1) (2023-08-08)
 
 **Updates**
 - Updated NodeJS from v12 to v16
