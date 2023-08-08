@@ -1,5 +1,10 @@
 # Change Log
 
+## v3.1 (2023-08-08)
+
+**Updates**
+- Updated NodeJS from v12 to v16
+
 ## [v2.0.1-alpha](https://github.com/cla-assistant/github-action/tree/v2.0.1-alpha) (2020-08-25)
 
 **Fixed Bugs:**
