@@ -39,5 +39,5 @@ inputs:
     description: "Set this to true if you want to use a mlcommons cla bot"
     default: true
 runs:
-  using: "node16"
+  using: "node20"
   main: "lib/main.js"
