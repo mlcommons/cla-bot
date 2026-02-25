@@ -13,17 +13,20 @@ import * as core from '@actions/core'
 
 export async function setupClaCheck() {
 
+  core.info(`Starting CLA check for PR #${context.issue.number}`)
   let committerMap = getInitialCommittersMap()
   if (!isPersonalAccessTokenPresent()) {
     core.setFailed('Please enter a personal access token as a environment variable in the CLA workflow file as described in the https://github.com/cla-assistant/github-action documentation')
     return
   }
   let signed: boolean = false, response
+  core.info(`Fetching committers for PR #${context.issue.number}`)
   let committers = await getCommitters() as CommittersDetails[]
-  core.info(`Found following users in PR: ${printCommittersDetails(committers)}`)
+  core.info(`Found ${committers.length} committer(s) in PR: ${printCommittersDetails(committers)}`)
   committers = checkAllowList(committers) as CommittersDetails[]
-  core.info(`Found following users(-allowlist) in PR: ${printCommittersDetails(committers)}`)
+  core.info(`After allowlist filter: ${committers.length} committer(s) remaining: ${printCommittersDetails(committers)}`)
 
+  core.info(`Fetching CLA file content and SHA`)
   try {
     response = await getCLAFileContentandSHA(committers, committerMap) as ClafileContentAndSha
   } catch (error) {
@@ -32,22 +35,28 @@ export async function setupClaCheck() {
   }
   const claFileContent = response?.claFileContent
   const sha: string = response?.sha
+  core.info(`CLA file retrieved (SHA: ${sha})`)
 
   committerMap = prepareCommiterMap(committers, claFileContent) as CommitterMap
-  core.info(`Created a committerMap for users in PR: ${printCommitterMap(committerMap)}`)
+  core.info(`CommitterMap: ${printCommitterMap(committerMap)}`)
+  core.info(`Signed: ${committerMap.signed?.length || 0}, Not signed: ${committerMap.notSigned?.length || 0}, Unknown: ${committerMap.unknown?.length || 0}`)
 
   if (committerMap?.notSigned && committerMap?.notSigned.length === 0) {
     signed = true
-    core.info(`Found all users to have signed CLA`)
+    core.info(`All users have signed the CLA`)
+  } else {
+    core.info(`${committerMap.notSigned?.length || 0} user(s) have not signed the CLA`)
   }
   try {
     // BROKEN !!!!!!!!!!
     // moving to after signed check
     ///const reactedCommitters: any = (await prCommentSetup(signed, committerMap, committers)) as ReactedCommitterMap
+    core.info(`Setting up PR comment (signed=${signed})`)
     await prCommentSetup(signed, committerMap, committers)
+    core.info(`PR comment setup complete`)
 
     if (signed) {
-      core.info(`All committers have signed the CLA`)
+      core.info(`All committers have signed the CLA - checking if workflow rerun is needed`)
       return reRunLastWorkFlowIfRequired()
     }
     
