@@ -8,23 +8,38 @@ import * as core from '@actions/core'
 export async function reRunLastWorkFlowIfRequired() {
 
     if (context.eventName === "pull_request") {
-        core.info(`rerun not required for event - pull_request`)
+        core.info(`Rerun not required for event type: pull_request`)
         return
     }
 
+    core.info(`Checking if a workflow rerun is required (event: ${context.eventName}, PR #${context.issue.number})`)
+
     const branch = await getBranchOfPullRequest()
-    core.info(` branch - ${branch}`)
+    core.info(`PR #${context.issue.number} is on branch: ${branch}`)
+
     const workflowId = await getSelfWorkflowId()
+    core.info(`Found self workflow ID: ${workflowId}`)
+
+    core.info(`Listing workflow runs for branch "${branch}", workflow ID ${workflowId}`)
     const runs = await listWorkflowRunsInBranch(branch, workflowId)
+    core.info(`Found ${runs.data.total_count} workflow run(s) on branch "${branch}"`)
 
     if (runs.data.total_count > 0) {
         const run = runs.data.workflow_runs[0].id
+        core.info(`Most recent workflow run ID: ${run}`)
 
         const isLastWorkFlowFailed: boolean = await checkIfLastWorkFlowFailed(run)
+        core.info(`Most recent workflow run ${run} failed: ${isLastWorkFlowFailed}`)
+
         if (isLastWorkFlowFailed) {
-            core.info(`Rerunning build run ${run}`)
-            await reRunWorkflow(run).catch(error => core.error(`Error occurred when re-running the workflow: ${error}`))
+            core.info(`Triggering rerun of workflow run ${run}`)
+            await reRunWorkflow(run).catch(error => core.error(`Error occurred when re-running the workflow run ${run}: ${error.message}`))
+            core.info(`Successfully triggered rerun of workflow run ${run}`)
+        } else {
+            core.info(`Rerun not required - last workflow run ${run} did not fail`)
         }
+    } else {
+        core.info(`No previous workflow runs found on branch "${branch}" - skipping rerun`)
     }
 }
 

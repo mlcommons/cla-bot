@@ -5,6 +5,7 @@ import { context } from '@actions/github'
 export async function lockPullRequest() {
     core.info('Locking the Pull Request to safe guard the Pull Request CLA Signatures')
     const pullRequestNo: number = context.issue.number
+    core.info(`Calling GitHub API to lock issue/PR #${pullRequestNo} in ${context.repo.owner}/${context.repo.repo}`)
     try {
         await octokit.issues.lock(
             {
@@ -13,10 +14,9 @@ export async function lockPullRequest() {
                 issue_number: pullRequestNo
             }
         )
-        core.info(`successfully locked the pull request ${pullRequestNo}`)
+        core.info(`Successfully locked pull request #${pullRequestNo}`)
     } catch (e) {
-        core.error(`failed when locking the pull request `)
-
+        core.error(`Failed to lock pull request #${pullRequestNo}: ${e.message}`)
+        core.error(`Lock error status: ${e.status || 'unknown'}`)
     }
-
 }
