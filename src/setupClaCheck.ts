@@ -150,7 +150,9 @@ export function printUnsignedCommitter(committers: CommittersDetails[]): string 
   let text = '('
   for (const i of committers) {
     text += i.name
-    text += ', '
+    text += ' (id:'
+    text += i.id
+    text += '), '
   }
   text += ')'
   return text
