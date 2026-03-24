@@ -6,7 +6,7 @@ import { CommitterMap, CommittersDetails, ReactedCommitterMap, ClafileContentAnd
 import { context } from '@actions/github'
 import { createFile, getFileContent, updateFile } from './persistence/persistence'
 import { reRunLastWorkFlowIfRequired } from './pullRerunRunner'
-import { isPersonalAccessTokenPresent } from './octokit'
+import { isPersonalAccessTokenPresent, octokit } from './octokit'
 
 import * as _ from 'lodash'
 import * as core from '@actions/core'
@@ -48,12 +48,13 @@ export async function setupClaCheck() {
     core.info(`${committerMap.notSigned?.length || 0} user(s) have not signed the CLA`)
   }
   try {
-    // BROKEN !!!!!!!!!!
-    // moving to after signed check
-    ///const reactedCommitters: any = (await prCommentSetup(signed, committerMap, committers)) as ReactedCommitterMap
     core.info(`Setting up PR comment (signed=${signed})`)
     await prCommentSetup(signed, committerMap, committers)
     core.info(`PR comment setup complete`)
+
+    core.info(`Reporting cla-check commit status: ${signed ? 'success' : 'failure'}`)
+    await reportClaStatus(signed)
+    core.info(`cla-check commit status reported`)
 
     if (signed) {
       core.info(`All committers have signed the CLA - checking if workflow rerun is needed`)
@@ -145,6 +146,28 @@ const getInitialCommittersMap = (): CommitterMap => ({
   notSigned: [],
   unknown: []
 })
+
+async function reportClaStatus(signed: boolean): Promise<void> {
+  let sha: string
+  if (context.payload.pull_request?.head?.sha) {
+    sha = context.payload.pull_request.head.sha as string
+  } else {
+    const pr = await octokit.pulls.get({
+      owner: context.repo.owner,
+      repo: context.repo.repo,
+      pull_number: context.issue.number
+    })
+    sha = pr.data.head.sha
+  }
+  await octokit.repos.createCommitStatus({
+    owner: context.repo.owner,
+    repo: context.repo.repo,
+    sha,
+    state: signed ? 'success' : 'failure',
+    context: 'cla-check',
+    description: signed ? 'All contributors have signed the CLA' : 'Please sign the MLCommons CLA'
+  })
+}
 
 export function printUnsignedCommitter(committers: CommittersDetails[]): string {
   let text = '('
