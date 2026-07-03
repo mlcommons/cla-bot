@@ -1,6 +1,5 @@
 import { context } from '@actions/github'
 import { setupClaCheck } from './setupClaCheck'
-import { lockPullRequest } from './pullrequest/pullRequestLock'
 
 import * as core from '@actions/core'
 
@@ -13,9 +12,7 @@ export async function run() {
     core.info(`Repository: ${context.repo.owner}/${context.repo.repo}`)
 
     if (context.payload.action === 'closed') {
-      core.info(`PR #${context.issue.number} is closed - proceeding to lock`)
-      await lockPullRequest()
-      core.info(`Lock flow complete for PR #${context.issue.number}`)
+      core.info(`PR #${context.issue.number} is closed - skipping CLA check`)
     } else {
       core.info(`PR #${context.issue.number} is open - proceeding to CLA check`)
       await setupClaCheck()
