@@ -1,5 +1,3 @@
-import { CommittersDetails } from './interfaces'
-
 import * as _ from 'lodash'
 import * as input from './shared/getInputs'
 
@@ -20,7 +18,7 @@ function isUserNotInAllowList(committer) {
     }).length > 0
 }
 
-export function checkAllowList(committers: CommittersDetails[]): CommittersDetails[] {
-    const committersAfterAllowListCheck: CommittersDetails[] = committers.filter(committer => committer && !(isUserNotInAllowList !== undefined && isUserNotInAllowList(committer.name)))
+export function checkAllowList<T extends { name: string }>(committers: T[]): T[] {
+    const committersAfterAllowListCheck: T[] = committers.filter(committer => committer && !(isUserNotInAllowList !== undefined && isUserNotInAllowList(committer.name)))
     return committersAfterAllowListCheck
 }

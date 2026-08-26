@@ -1,8 +1,22 @@
 import {
-    CommitterMap
+    CommitterMap,
+    UnlinkedCommitDetails
 } from '../interfaces'
 import * as input from '../shared/getInputs'
 import * as core from '@actions/core'
+
+export function unlinkedAuthorsCommentContent(unlinkedCommits: UnlinkedCommitDetails[]): string {
+    let text = `**MLCommons CLA bot:** :warning: This pull request cannot be checked for CLA signatures because the following commit(s) have an author that is not linked to any GitHub account:<br/>`
+    unlinkedCommits.forEach(commit => {
+        text += `<br/>- commit \`${commit.sha.substring(0, 7)}\` — author name: \`${commit.name}\`, email: \`${commit.email}\``
+    })
+    text += `<br/><br/>To fix this, the commit author needs to either:<br/>`
+    text += `1. [Add this email address to their GitHub account](https://github.com/settings/emails), or<br/>`
+    text += `2. Amend the commit(s) to use an email address already linked to their GitHub account, then force-push the branch.<br/>`
+    text += `<br/>See GitHub's guide: [Why are my commits linked to the wrong user?](https://help.github.com/articles/why-are-my-commits-linked-to-the-wrong-user/#commits-are-not-linked-to-any-user)<br/>`
+    text += '<sub>You can retrigger this bot by commenting **recheck** in this Pull Request</sub>'
+    return text
+}
 
 export function commentContent(signed: boolean, committerMap: CommitterMap): string {
     // using a `string` true or false purposely as github action input cannot have a boolean value
@@ -52,13 +66,6 @@ function mlcommons(signed: boolean, committerMap: CommitterMap): string {
         text += '<br/>'
     }
 
-    if (committerMap && committerMap.unknown && committerMap.unknown.length > 0) {
-        let seem = committerMap.unknown.length > 1 ? "seem" : "seems"
-        let committerNames = committerMap.unknown.map(committer => committer.name)
-        text += `**${committerNames.join(", ")}** ${seem} not to be a GitHub user.`
-        text += ' You need a GitHub account after you become MLCommons member. If you have already a GitHub account, please [add the email address used for this commit to your account](https://help.github.com/articles/why-are-my-commits-linked-to-the-wrong-user/#commits-are-not-linked-to-any-user).<br/>'
-    }
-
     text += '<sub>You can retrigger this bot by commenting **recheck** in this Pull Request</sub>'
     return text
 }
@@ -95,13 +102,6 @@ function dco(signed: boolean, committerMap: CommitterMap): string {
         text += '<br/>'
     }
 
-    if (committerMap && committerMap.unknown && committerMap.unknown.length > 0) {
-        let seem = committerMap.unknown.length > 1 ? "seem" : "seems"
-        let committerNames = committerMap.unknown.map(committer => committer.name)
-        text += `**${committerNames.join(", ")}** ${seem} not to be a GitHub user.`
-        text += ' You need a GitHub account to be able to sign the DCO. If you have already a GitHub account, please [add the email address used for this commit to your account](https://help.github.com/articles/why-are-my-commits-linked-to-the-wrong-user/#commits-are-not-linked-to-any-user).<br/>'
-    }
-
     text += '<sub>You can retrigger this bot by commenting **recheck** in this Pull Request</sub>'
     return text
 }
@@ -136,13 +136,6 @@ function cla(signed: boolean, committerMap: CommitterMap): string {
             text += `<br/>:x: @${unsignedCommitter.name}`
         })
         text += '<br/>'
-    }
-
-    if (committerMap && committerMap.unknown && committerMap.unknown.length > 0) {
-        let seem = committerMap.unknown.length > 1 ? "seem" : "seems"
-        let committerNames = committerMap.unknown.map(committer => committer.name)
-        text += `**${committerNames.join(", ")}** ${seem} not to be a GitHub user.`
-        text += ' You need a GitHub account to be able to sign the CLA. If you have already a GitHub account, please [add the email address used for this commit to your account](https://help.github.com/articles/why-are-my-commits-linked-to-the-wrong-user/#commits-are-not-linked-to-any-user).<br/>'
     }
 
     text += '<sub>You can retrigger this bot by commenting **recheck** in this Pull Request</sub>'

@@ -1,17 +1,12 @@
-import * as core from '@actions/core'
 import * as github from '@actions/github'
-import { context } from '@actions/github'
-import { getclas } from '../src/checkcla'
-import { lockPullRequest } from '../src/pullRequestLock'
+import { setupClaCheck } from '../src/setupClaCheck'
 import { run } from '../src/main'
-import { mocked } from 'ts-jest/utils'
+import { mocked } from 'jest-mock'
 
 jest.mock('@actions/core')
 jest.mock('@actions/github')
-jest.mock('../src/pullRequestLock')
-jest.mock('../src/checkcla')
-const mockedGetClas = mocked(getclas)
-const mockedLockPullRequest = mocked(lockPullRequest)
+jest.mock('../src/setupClaCheck')
+const mockedSetupClaCheck = mocked(setupClaCheck)
 
 
 describe('Pull request event', () => {
@@ -56,51 +51,24 @@ describe('Pull request event', () => {
   }
   )
 
-  test('the lockPullRequest  method should be called if there is a pull request merge/closed', async () => {
+  test('the setupClaCheck method should not be called if there is a pull request merge/closed', async () => {
 
     await run()
-    expect(mockedLockPullRequest).toHaveBeenCalled()
-
-
+    expect(mockedSetupClaCheck).not.toHaveBeenCalled()
   })
 
-  test('the checkcla  method should not called if there is a pull request merge/closed', async () => {
-
-    await run()
-    expect(mockedGetClas).not.toHaveBeenCalled()
-  })
-
-  test('the lockPullRequest  method should not be called if there is a pull request opened', async () => {
+  test('the setupClaCheck method should be called if there is a pull request opened', async () => {
 
     github.context.payload.action = 'opened'
     await run()
-
-    expect(mockedLockPullRequest).not.toHaveBeenCalled()
-
-  })
-
-  test('the checkcla  method should  be called if there is a pull request opened', async () => {
-
-    github.context.payload.action = 'opened'
-    await run()
-    expect(mockedGetClas).toHaveBeenCalled()
+    expect(mockedSetupClaCheck).toHaveBeenCalled()
 
   })
 
-  test('the lockPullRequest  method should not be called if there is a pull request sync', async () => {
-
-    github.context.payload.action = 'synchronize'
-
-    await run()
-
-    expect(mockedLockPullRequest).not.toHaveBeenCalled()
-
-  })
-
-  test('the checkcla  method should  be called if there is a pull request sync', async () => {
+  test('the setupClaCheck method should be called if there is a pull request sync', async () => {
     github.context.payload.action = 'synchronize'
     await run()
-    expect(mockedGetClas).toHaveBeenCalled()
+    expect(mockedSetupClaCheck).toHaveBeenCalled()
 
   })
 

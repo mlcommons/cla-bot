@@ -1,8 +1,8 @@
 import { checkAllowList } from './checkAllowList'
 import getCommitters from './graphql'
-import prCommentSetup from './pullrequest/pullRequestComment'
+import prCommentSetup, { postUnlinkedAuthorsComment } from './pullrequest/pullRequestComment'
 import { printCommitterMap, printCommittersDetails } from './pullrequest/pullRequestComment'
-import { CommitterMap, CommittersDetails, ReactedCommitterMap, ClafileContentAndSha } from './interfaces'
+import { CommitterMap, CommittersDetails, ReactedCommitterMap, ClafileContentAndSha, UnlinkedCommitDetails } from './interfaces'
 import { context } from '@actions/github'
 import { createFile, getFileContent, updateFile } from './persistence/persistence'
 import { reRunLastWorkFlowIfRequired } from './pullRerunRunner'
@@ -21,9 +21,28 @@ export async function setupClaCheck() {
   }
   let signed: boolean = false, response
   core.info(`Fetching committers for PR #${context.issue.number}`)
-  let committers = await getCommitters() as CommittersDetails[]
-  core.info(`Found ${committers.length} committer(s) in PR: ${printCommittersDetails(committers)}`)
-  committers = checkAllowList(committers) as CommittersDetails[]
+  const { committers: rawCommitters, unlinkedCommits: rawUnlinkedCommits } = await getCommitters()
+  core.info(`Found ${rawCommitters.length} committer(s) in PR: ${printCommittersDetails(rawCommitters)}`)
+  if (rawUnlinkedCommits.length > 0) {
+    core.info(`Found ${rawUnlinkedCommits.length} commit(s) with an author not linked to a GitHub account: ${printUnlinkedCommits(rawUnlinkedCommits)}`)
+  }
+
+  const unlinkedCommits = checkAllowList(rawUnlinkedCommits)
+  if (unlinkedCommits.length > 0) {
+    core.info(`This is a preliminary check that runs before CLA signatures are evaluated - the CLA check cannot proceed while any commit has an unlinked author.`)
+    core.info(`Commit(s) with an author not linked to a GitHub account: ${printUnlinkedCommits(unlinkedCommits)}`)
+    try {
+      await postUnlinkedAuthorsComment(unlinkedCommits)
+      await reportClaStatus(false, 'One or more commit authors are not linked to a GitHub account - see PR comment')
+    } catch (err) {
+      core.setFailed(`Could not report unlinked commit authors: ${err.message}`)
+      return
+    }
+    core.setFailed(`Pull request number ${context.issue.number} has commit(s) with an author not linked to a GitHub account; CLA signatures cannot be verified until this is fixed`)
+    return
+  }
+
+  let committers = checkAllowList(rawCommitters)
   core.info(`After allowlist filter: ${committers.length} committer(s) remaining: ${printCommittersDetails(committers)}`)
 
   core.info(`Fetching CLA file content and SHA`)
@@ -39,7 +58,7 @@ export async function setupClaCheck() {
 
   committerMap = prepareCommiterMap(committers, claFileContent) as CommitterMap
   core.info(`CommitterMap: ${printCommitterMap(committerMap)}`)
-  core.info(`Signed: ${committerMap.signed?.length || 0}, Not signed: ${committerMap.notSigned?.length || 0}, Unknown: ${committerMap.unknown?.length || 0}`)
+  core.info(`Signed: ${committerMap.signed?.length || 0}, Not signed: ${committerMap.notSigned?.length || 0}`)
 
   if (committerMap?.notSigned && committerMap?.notSigned.length === 0) {
     signed = true
@@ -106,11 +125,6 @@ async function createClaFileAndPRComment(committers: CommittersDetails[], commit
   const signed = false
   committerMap.notSigned = committers
   committerMap.signed = []
-  committers.map(committer => {
-    if (!committer.id) {
-      committerMap.unknown.push(committer)
-    }
-  })
 
   const initialContent = { signedContributors: [] }
   const initialContentString = JSON.stringify(initialContent, null, 3)
@@ -133,21 +147,15 @@ function prepareCommiterMap(committers: CommittersDetails[], claFileContent): Co
   committerMap.signed = committers.filter(committer =>
     claFileContent.signedContributors.some(cla => committer.id === cla.id)
   )
-  committers.map(committer => {
-    if (!committer.id) {
-      committerMap.unknown.push(committer)
-    }
-  })
   return committerMap
 }
 
 const getInitialCommittersMap = (): CommitterMap => ({
   signed: [],
-  notSigned: [],
-  unknown: []
+  notSigned: []
 })
 
-async function reportClaStatus(signed: boolean): Promise<void> {
+async function reportClaStatus(signed: boolean, description?: string): Promise<void> {
   let sha: string
   if (context.payload.pull_request?.head?.sha) {
     sha = context.payload.pull_request.head.sha as string
@@ -165,7 +173,7 @@ async function reportClaStatus(signed: boolean): Promise<void> {
     sha,
     state: signed ? 'success' : 'failure',
     context: 'cla-check',
-    description: signed ? 'All contributors have signed the CLA' : 'Please sign the MLCommons CLA'
+    description: description || (signed ? 'All contributors have signed the CLA' : 'Please sign the MLCommons CLA')
   })
 }
 
@@ -176,6 +184,16 @@ export function printUnsignedCommitter(committers: CommittersDetails[]): string 
     text += ' (id:'
     text += i.id
     text += '), '
+  }
+  text += ')'
+  return text
+}
+
+export function printUnlinkedCommits(unlinkedCommits: UnlinkedCommitDetails[]): string {
+  let text = '('
+  for (const c of unlinkedCommits) {
+    text += `commit ${c.sha}: name="${c.name}", email="${c.email}"`
+    text += ', '
   }
   text += ')'
   return text

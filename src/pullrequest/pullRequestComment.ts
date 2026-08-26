@@ -1,14 +1,40 @@
 import { octokit } from '../octokit'
 import { context } from '@actions/github'
 import signatureWithPRComment from './signatureComment'
-import { commentContent } from './pullRequestCommentContent'
+import { commentContent, unlinkedAuthorsCommentContent } from './pullRequestCommentContent'
 import {
   CommitterMap,
   ReactedCommitterMap,
-  CommittersDetails
+  CommittersDetails,
+  UnlinkedCommitDetails
 } from '../interfaces'
 import { getUseDcoFlag, getUseMLCommonsFlag } from '../shared/getInputs'
 import * as core from '@actions/core'
+
+export async function postUnlinkedAuthorsComment(unlinkedCommits: UnlinkedCommitDetails[]): Promise<void> {
+  const body = unlinkedAuthorsCommentContent(unlinkedCommits)
+  try {
+    const claBotComment = await getComment()
+    if (!claBotComment) {
+      await octokit.issues.createComment({
+        owner: context.repo.owner,
+        repo: context.repo.repo,
+        issue_number: context.issue.number,
+        body
+      })
+    } else {
+      await octokit.issues.updateComment({
+        owner: context.repo.owner,
+        repo: context.repo.repo,
+        comment_id: claBotComment.id,
+        body
+      })
+    }
+  } catch (error) {
+    throw new Error(
+      `Error occured when creating or editing the comments of the pull request: ${error.message}`)
+  }
+}
 
 export default async function prCommentSetup(signed: boolean, committerMap: CommitterMap, committers: CommittersDetails[]) {
   try {
@@ -70,15 +96,15 @@ async function getComment() {
     //TODO: check the below regex
     // using a `string` true or false purposely as github action input cannot have a boolean value
     if (getUseMLCommonsFlag() === 'true') {
-      let comment = response.data.find(comment => comment.body.match(/.*MLCommons CLA bot.*/))
+      let comment = response.data.find(comment => comment.body?.match(/.*MLCommons CLA bot.*/))
       core.info(`MLCommons CLA bot comment id:  ${comment?.id}`)
-      return response.data.find(comment => comment.body.match(/.*MLCommons CLA bot.*/))
+      return response.data.find(comment => comment.body?.match(/.*MLCommons CLA bot.*/))
     } else {
       core.error(`ERROR: This function getComment() should not be called in MLCommons bot.`)
       if (getUseDcoFlag() === 'true') {
-        return response.data.find(comment => comment.body.match(/.*DCO Assistant Lite bot.*/))
+        return response.data.find(comment => comment.body?.match(/.*DCO Assistant Lite bot.*/))
       } else if (getUseDcoFlag() === 'false') {
-        return response.data.find(comment => comment.body.match(/.*CLA Assistant Lite bot.*/))
+        return response.data.find(comment => comment.body?.match(/.*CLA Assistant Lite bot.*/))
   
       }
     }
@@ -126,7 +152,6 @@ export function printCommittersDetails(committers: CommittersDetails[]): string 
 export function printCommitterMap(committers: CommitterMap): string {
   let signed = committers.signed || []
   let notSigned = committers.notSigned || []
-  let unknown = committers.unknown || []
   let text = '(signed: '
   for (const i of signed) {
     text += i.name
