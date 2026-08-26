@@ -1,7 +1,12 @@
 export interface CommitterMap {
     signed: CommittersDetails[],
-    notSigned: CommittersDetails[],
-    unknown: CommittersDetails[]
+    notSigned: CommittersDetails[]
+}
+
+export interface UnlinkedCommitDetails {
+    sha: string,
+    name: string,
+    email: string
 }
 
 export interface ReactedCommitterMap {

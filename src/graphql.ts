@@ -1,13 +1,16 @@
 import { octokit } from './octokit'
 import { context } from '@actions/github'
-import { CommittersDetails } from './interfaces'
+import { CommittersDetails, UnlinkedCommitDetails } from './interfaces'
 
+export interface GetCommittersResult {
+    committers: CommittersDetails[]
+    unlinkedCommits: UnlinkedCommitDetails[]
+}
 
-
-export default async function getCommitters() {
+export default async function getCommitters(): Promise<GetCommittersResult> {
     try {
         let committers: CommittersDetails[] = []
-        let filteredCommitters: CommittersDetails[] = []
+        let unlinkedCommits: UnlinkedCommitDetails[] = []
         let response: any = await octokit.graphql(`
         query($owner:String! $name:String! $number:Int! $cursor:String!){
             repository(owner: $owner, name: $name) {
@@ -17,6 +20,7 @@ export default async function getCommitters() {
                     edges {
                         node {
                             commit {
+                                oid
                                 author {
                                     email
                                     name
@@ -27,6 +31,7 @@ export default async function getCommitters() {
                                     }
                                 }
                                 committer {
+                                    email
                                     name
                                     user {
                                         id
@@ -52,26 +57,34 @@ export default async function getCommitters() {
             cursor: ''
         })
         response.repository.pullRequest.commits.edges.forEach(edge => {
-            let committer = extractUserFromCommit(edge.node.commit)
-            let user = {
-                name: committer.login || committer.name,
-                id: committer.databaseId || '',
-                pullRequestNo: context.issue.number
-            }
-            if (committers.length === 0 || committers.map((c) => {
-                return c.name
-            }).indexOf(user.name) < 0) {
-                committers.push(user)
+            const commit = edge.node.commit
+            const resolvedUser = commit.author.user || commit.committer.user
+            if (resolvedUser) {
+                let user = {
+                    name: resolvedUser.login,
+                    id: resolvedUser.databaseId || '',
+                    pullRequestNo: context.issue.number
+                }
+                if (committers.length === 0 || committers.map((c) => {
+                    return c.name
+                }).indexOf(user.name) < 0) {
+                    committers.push(user)
+                }
+            } else {
+                unlinkedCommits.push({
+                    sha: commit.oid,
+                    name: commit.author.name || commit.committer.name,
+                    email: commit.author.email || commit.committer.email
+                })
             }
         })
-        filteredCommitters = committers.filter((committer) => {
+        const filteredCommitters = committers.filter((committer) => {
             return committer.id !== 41898282
         })
-        return filteredCommitters
+        return { committers: filteredCommitters, unlinkedCommits }
 
     } catch (e) {
         throw new Error('graphql call to get the committers details failed:' + e)
     }
 
 }
-const extractUserFromCommit = (commit) => commit.author.user || commit.committer.user || commit.author || commit.committer
