@@ -43,9 +43,10 @@ export default async function prCommentSetup(signed: boolean, committerMap: Comm
       core.info(`MLCommons bot has not created a PR Comment so far.`)
       return createComment(signed, committerMap)
     } else if (claBotComment?.id) {
-      if (signed) {
-        await updateComment(signed, committerMap, claBotComment)
-      }
+      // Always refresh the comment: an existing comment may be the "unlinked author"
+      // message from a previous run, which needs to be replaced once that's resolved,
+      // even if the outcome this run is still "not signed" rather than "signed".
+      await updateComment(signed, committerMap, claBotComment)
 
       // reacted committers are contributors who have newly signed by posting the Pull Request comment
       // subin commented below line for mlcommons-bot
