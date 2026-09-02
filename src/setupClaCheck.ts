@@ -41,6 +41,7 @@ export async function setupClaCheck() {
     core.setFailed(`Pull request number ${context.issue.number} has commit(s) with an author not linked to a GitHub account; CLA signatures cannot be verified until this is fixed`)
     return
   }
+  core.info(`All commits have an author linked to a GitHub account - proceeding to CLA signature checks`)
 
   let committers = checkAllowList(rawCommitters)
   core.info(`After allowlist filter: ${committers.length} committer(s) remaining: ${printCommittersDetails(committers)}`)
